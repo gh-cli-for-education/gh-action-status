@@ -1,35 +1,49 @@
 #!/usr/bin/env bash
+# Outputs the status of recent workflows for a several repos
+# https://kodekloud.com/blog/bash-getopts/
+
 set -e
 
-echo "Hello gh-action-status!"
+#!/bin/bash
+# Outputs the workflows for a given repo
+# https://kodekloud.com/blog/bash-getopts/
 
-# Snippets to help get started:
+NUMBER_OF_WORKFLOWS=1
+REPOS=("ULL-MII-SYTWS/ull-mii-sytws.github.io" "ULL-MII-SYTWS-2425/ull-mii-sytws-2425.github.io")
+JSON_FIELDS="createdAt,status"
+OPTIONS="n:r:f:j:h"
 
-# Determine if an executable is in the PATH
-# if ! type -p ruby >/dev/null; then
-#   echo "Ruby not found on the system" >&2
-#   exit 1
-# fi
+function help {
+  echo "Usage: $0 [-n <number of workflows>] [-r <comma separated list of repos>  [-f <comma separated json fields>]...]"
+  echo "Example:
+  ./scripts/get-workflows.sh -n 5 -r \"ULL-MII-SYTWS/ull-mii-sytws.github.io ULL-MII-SYTWS-2425/ull-mii-sytws-2425.github.io\" -f \"createdAt,status\"
+  "
+  echo "JSON FIELDS:
+  attempt, conclusion, createdAt, databaseId, displayTitle, event, headBranch,
+  headSha, name, number, startedAt, status, updatedAt, url, workflowDatabaseId,
+  workflowName
+  "
+  exit 0
+} 
+# Get number of workflows from command line if provided as argument -n <number>
+# Example: ./scripts/get-workflows.sh -n 5
+# Get the list of repos from the command line if provided as argument -r "<repo1>,<repo2>..."
+# Example: .-f "createdAt,status" -r "ULL-MII-SYTWS/ull-mii-sytws.github.io ULL-MII-SYTWS-2425/ull-mii-sytws-2425.github.io" -f "createdAt,status"
+while getopts "$OPTIONS" flag
+do
+    case "${flag}" in
+        n) NUMBER_OF_WORKFLOWS=${OPTARG};;
+        r) REPOS=(${OPTARG//,/ });;
+        j) JSON_FIELDS=${OPTARG};;
+        f) JSON_FIELDS=${OPTARG};;
+        *) help;;
+    esac
+done
 
-# Pass arguments through to another command
-# gh issue list "$@" -R cli/cli
+for REPONAME in "${REPOS[@]}"; do
+  echo 
+  echo "REPO: $REPONAME"
+  WORKFLOWID=$(gh run list --json $JSON_FIELDS -R $REPONAME -L $NUMBER_OF_WORKFLOWS)
+  echo $WORKFLOWID | jq '.'
+done
 
-# Using the gh api command to retrieve and format information
-# QUERY='
-#   query($endCursor: String) {
-#     viewer {
-#       repositories(first: 100, after: $endCursor) {
-#         nodes {
-#           nameWithOwner
-#           stargazerCount
-#         }
-#       }
-#     }
-#   }
-# '
-# TEMPLATE='
-#   {{- range $repo := .data.viewer.repositories.nodes -}}
-#     {{- printf "name: %s - stargazers: %v\n" $repo.nameWithOwner $repo.stargazerCount -}}
-#   {{- end -}}
-# '
-# exec gh api graphql -f query="${QUERY}" --paginate --template="${TEMPLATE}"
